@@ -1,0 +1,40 @@
+app-id: org.openvsp.OpenVSP
+runtime: org.freedesktop.Sdk
+runtime-version: 22.08
+sdk: org.freedesktop.Sdk
+#sdk-extensions:
+command: OpenVSP
+desktop-file-name-suffix: '' # used to create development version
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=network
+  - --share=ipc
+  - --filesystem=home
+  
+modules:
+# copied from https://github.com/flathub/io.github.jliljebl.Flowblade/blob/399eb1cd8cb64f7957dc3cf479b6774c606ab752/io.github.jliljebl.Flowblade.yaml
+  - name: swig
+    config-opts:
+      - --without-alllang
+      - --with-python=/app/bin/python3
+      - --without-boost
+      - --without-pcre
+    cleanup:
+      - '*'
+    sources:
+      - type: archive
+        url: https://sourceforge.net/projects/swig/files/swig/swig-4.0.2/swig-4.0.2.tar.gz
+        sha256: d53be9730d8d58a16bf0cbd1f8ac0c0c3e1090573168bfa151b01eb47fa906fc
+        mirror-urls:
+          - http://ftp.debian.org/debian/pool/main/s/swig/swig_4.0.2.orig.tar.gz
+
+  - name: OpenVSP
+    buildsystem: cmake-ninja
+    builddir: true
+    source:
+      - type: git
+        url: /home/martin/GIT/OpenVSP/
+        branch: main
+ 
