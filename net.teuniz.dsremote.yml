@@ -1,0 +1,21 @@
+app-id: net.teuniz.dsremote
+runtime: org.kde.Platform
+runtime-version: 5.15-22.08
+sdk: org.kde.Sdk
+command: DSRemote
+desktop-file-name-suffix: '' # used to create development version
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --filesystem=home # to save images
+  - --share=network # for the LAN connection needed
+  - --device=all # to access usb devices
+
+modules:
+  - name: DSRemote
+    buildsystem: cmake
+    builddir: true
+    sources:
+      - type: git
+        url: https://gitlab.com/Murmele/DSRemote.git
+        branch: master

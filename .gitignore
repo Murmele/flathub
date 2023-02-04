@@ -1,0 +1,4 @@
+*.bak
+.flatpak-builder
+build
+dsremoteRepo
