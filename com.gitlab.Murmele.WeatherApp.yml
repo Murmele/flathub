@@ -1,0 +1,22 @@
+app-id: com.gitlab.Murmele.WeatherApp
+runtime: org.freedesktop.Sdk
+runtime-version: 22.08
+sdk: org.freedesktop.Sdk
+
+command: WeatherApp
+desktop-file-name-suffix: '' # used to create development version
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=network
+  - --filesystem=home
+  - --filesystem=/tmp # Needed to store temporary fetched files
+  
+modules:
+  - name: WeatherApp
+    buildsystem: meson
+    builddir: true
+    sources:
+      - type: git
+        url: https://gitlab.com/Murmele/weatherapp.git
+        branch: development
