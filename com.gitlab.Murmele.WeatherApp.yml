@@ -1,7 +1,9 @@
 app-id: com.gitlab.Murmele.WeatherApp
-runtime: org.freedesktop.Sdk
+runtime: org.freedesktop.Platform
 runtime-version: 22.08
 sdk: org.freedesktop.Sdk
+sdk-extensions:
+    - org.freedesktop.Sdk.Extension.rust-stable
 
 command: WeatherApp
 desktop-file-name-suffix: '' # used to create development version
@@ -12,6 +14,12 @@ finish-args:
   - --filesystem=home
   - --filesystem=/tmp # Needed to store temporary fetched files
   
+# TODO: why is this needed?
+build-options:
+    append-path: "/usr/lib/sdk/rust-stable/bin"
+    build-args:
+        - --share=network  # needed so that cargo is able to fetch dependencies
+
 modules:
   - name: WeatherApp
     buildsystem: meson
