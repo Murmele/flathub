@@ -5,7 +5,7 @@ sdk: org.freedesktop.Sdk
 sdk-extensions:
     - org.freedesktop.Sdk.Extension.rust-stable
 
-command: WeatherApp
+command: weatherapp
 desktop-file-name-suffix: '' # used to create development version
 finish-args:
   - --socket=wayland
@@ -13,6 +13,10 @@ finish-args:
   - --share=network
   - --filesystem=home
   - --filesystem=/tmp # Needed to store temporary fetched files
+  
+rename-icon: weatherapp.png
+rename-desktop-file: weatherapp.desktop
+rename-appdata-file: weatherapp.appdata.xml
   
 # TODO: why is this needed?
 build-options:
