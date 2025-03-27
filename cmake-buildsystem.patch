@@ -1,0 +1,926 @@
+From 846179f946545efc80a4e27f4411b8562d37308b Mon Sep 17 00:00:00 2001
+From: Martin Marmsoler <martin.marmsoler@gmail.com>
+Date: Sun, 23 Mar 2025 14:12:11 +0100
+Subject: [PATCH 1/4] Port to cmake build system
+
+---
+ .gitignore                              |   2 +
+ CMakeLists.txt                          | 111 ++++++++++++++++++++++++
+ global.h                                |   2 +
+ images/r.xcf                            | Bin 1749 -> 5967 bytes
+ images/r_dsremote_128x128.png           | Bin 0 -> 2508 bytes
+ images/r_dsremote_256x256.png           | Bin 0 -> 3905 bytes
+ images/r_dsremote_32x32.png             | Bin 0 -> 1105 bytes
+ images/r_dsremote_512x512.png           | Bin 0 -> 5174 bytes
+ images/r_dsremote_64x64.png             | Bin 0 -> 1605 bytes
+ install/net.teuniz.dsremote.appdata.xml |  77 ++++++++++++++++
+ install/net.teuniz.dsremote.desktop     |  11 +++
+ interface.cpp                           |   3 +-
+ mainwindow.cpp                          |  10 +--
+ save_data.cpp                           |   1 +
+ serial_decoder.cpp                      |   2 +-
+ third_party/CMakeLists.txt              |   1 +
+ third_party/kiss_fft/CMakeLists.txt     |   5 ++
+ timer_handlers.cpp                      |   2 +-
+ tmc_lan.c                               |   2 +
+ 19 files changed, 217 insertions(+), 12 deletions(-)
+ create mode 100644 .gitignore
+ create mode 100644 CMakeLists.txt
+ create mode 100644 images/r_dsremote_128x128.png
+ create mode 100644 images/r_dsremote_256x256.png
+ create mode 100644 images/r_dsremote_32x32.png
+ create mode 100644 images/r_dsremote_512x512.png
+ create mode 100644 images/r_dsremote_64x64.png
+ create mode 100644 install/net.teuniz.dsremote.appdata.xml
+ create mode 100644 install/net.teuniz.dsremote.desktop
+ create mode 100644 third_party/CMakeLists.txt
+ create mode 100644 third_party/kiss_fft/CMakeLists.txt
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..9be39f9
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++CMakeLists.txt.user
++build
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..992ebfa
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,111 @@
++# FILE_SET needs at least 3.23
++cmake_minimum_required(VERSION 3.23)
++
++project(DSRemote)
++set(ID "net.teuniz.dsremote")
++set(VERSION "0.42_2408061715")
++
++find_package(QT NAMES Qt4 Qt5 Qt6 REQUIRED)
++set(QT Qt${QT_VERSION_MAJOR})
++
++if (QT_VERSION_MAJOR EQUAL 4)
++    if (QT_MINOR_VERSION LESS 7 OR (QT_MINOR_VERSION EQUAL 7 AND QT_PATCH_VERSION LESS 1))
++        message(FATAL_ERROR "This project needs at least Qt4.7.1")
++    endif()
++elseif( QT_VERSION_MAJOR EQUAL 5)
++    if (QT_MINOR_VERSION LESS 9 OR (QT_MINOR_VERSION EQUAL 9 AND QT_PATCH_VERSION LESS 1))
++        message(FATAL_ERROR "This project needs at least Qt5.9.1")
++    endif()
++endif()
++
++find_package(${QT} REQUIRED COMPONENTS Widgets Network)
++
++set(COMPILE_FLAGS "-Wextra -Wshadow -Wformat-nonliteral -Wformat -Wformat-security -Wtype-limits -Wfatal-errors")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILE_FLAGS}")
++
++add_compile_definitions(_LARGEFILE64_SOURCE _LARGEFILE_SOURCE) # needed in edflib
++
++add_subdirectory(third_party)
++
++set(HEADERS global.h
++			mainwindow.h
++			about_dialog.h
++			utils.h
++			connection.h
++			tmc_dev.h
++			tmc_lan.h
++			tled.h
++			edflib.h
++			signalcurve.h
++			settings_dialog.h
++			screen_thread.h
++			lan_connect_thread.h
++			read_settings_thread.h
++			save_data_thread.h
++			decode_dialog.h
++			tdial.h
++			wave_dialog.h
++			wave_view.h
++			playback_dialog.h)
++
++set(SOURCES main.cpp
++			mainwindow.cpp
++			mainwindow_constr.cpp
++			timer_handlers.cpp
++			save_data.cpp
++			interface.cpp
++			serial_decoder.cpp
++			about_dialog.cpp
++			utils.c
++			connection.cpp
++			tmc_dev.c
++			tmc_lan.c
++			tled.cpp
++			edflib.c
++			signalcurve.cpp
++			settings_dialog.cpp
++			screen_thread.cpp
++			lan_connect_thread.cpp
++			read_settings_thread.cpp
++			save_data_thread.cpp
++			decode_dialog.cpp
++			tdial.cpp
++			wave_dialog.cpp
++			wave_view.cpp
++			playback_dialog.cpp)
++
++set(RESOURCES images.qrc)
++
++add_executable(${PROJECT_NAME} ${SOURCES} ${RESOURCES})
++target_link_libraries(${PROJECT_NAME} ${QT}::Widgets ${QT}::Network kiss_fft)
++set_property(TARGET ${PROJECT_NAME} PROPERTY AUTOMOC ON)
++set_property(TARGET ${PROJECT_NAME} PROPERTY AUTORCC ON)
++target_sources(${PROJECT_NAME} PRIVATE
++	FILE_SET HEADERS TYPE HEADERS BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS})
++target_compile_definitions(${PROJECT_NAME} PRIVATE PROGRAM_VERSION="${VERSION}")
++
++install(TARGETS ${PROJECT_NAME})
++
++if(UNIX AND NOT APPLE)
++  foreach(icon 32 64 128 256 512)
++	install(
++	  FILES images/r_dsremote_${icon}x${icon}.png
++	  DESTINATION share/icons/hicolor/${icon}x${icon}/apps
++	  COMPONENT ${PROJECT_NAME}
++	  RENAME ${ID}.png)
++  endforeach()
++
++  install(
++          FILES install/${ID}.appdata.xml
++	  DESTINATION share/metainfo
++	  COMPONENT ${PROJECT_NAME}
++  )
++
++	install(
++                FILES install/${ID}.desktop
++		DESTINATION share/applications
++		COMPONENT ${PROJECT_NAME}
++	)
++endif()
++
++
+diff --git a/global.h b/global.h
+index 22346f3..05e028c 100644
+--- a/global.h
++++ b/global.h
+@@ -59,7 +59,9 @@
+ 
+ 
+ #define PROGRAM_NAME          "DSRemote"
++#ifndef PROGRAM_VERSION
+ #define PROGRAM_VERSION       "0.42_2408061715"
++#endif
+ 
+ #define MAX_PATHLEN            (1024)
+ 
+diff --git a/images/r.xcf b/images/r.xcf
+index 9331bf13bf10735505d83d15d5bbfa893506fcb1..b2d1d1ae81cd87a5d2de890e3e8e124a917c745d 100644
+GIT binary patch
+literal 5967
+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
+JO|L4&;%_rMv~mCd
+
+literal 1749
+zcmcgsO^6&t6#ja9GP^tfv%86+0n0HaGeRdjVIwZtED{ev5<%iYi2>=Isp%=x(>>|#
+zAu~bTOT734f_U=e!JB&U5){FMrxkBXKuAD>AX$uu1c}*Acgd^i-t8re$2@5IecyYp
+zUcDd661_efwmPgMYz_eP@kdexplJYR0Zg6z7@!Zp9DodfJplH_I{EDdv{L|zmgx13
+zmfP!bC!hc_&b;JtGvIA@Nd#SX>g88nB}+xQik@k4!}3Hs_SR7MgOSad@7ki>$kjVm
+z%e7sP)z#1NtQC{ZAD&mTi_(lujYh7%vP)=U{~v`yhkoB|3CCj1Bv&I>AMHlQoH1}j
+zz=YH4a-ZVePRHlL)&(j0VQS3m45dEAqJ0DGxsxCO4FJu!s}pC5nTV~~co>ofmKw}-
+ztds0d>6C^BNs>?Lg_K@Q>E-y`Nhu}em`vHyOF@fZZA~}e!@#i35%(yM256`2J=41|
+z=(F0=SXo~3`=-NuahabuUt3sg9y@xzwtRN!2+_++M`EuUZG!6rtoEAe_z5y7j5S|K
+zW<K^&?6|3YG2}MQ!*l{++QRhNNX^GK9cy4(oYlBv4Ag-urq7MG@OUc_uEXrWYvjgD
+zm)gCpfj+Fz+PppR1JM~Vn|A_QKzC^L+%{(&G32z&L|hW>pvxALMU2@l7gjf53ya&e
+zkh9vVttz_031}%*4ddY{(SM0SvLG2i|8pm&-y^&_`P=rVok2<dyK(pC+UGrnD(2*a
+z=*uTj#y%PTbrdB$Cd2i|QG_mYxIZ;_j9-o9gp9sYR2kv(*9jg*0lKUpd}3W{GJ0RZ
+zDk4E>EkXMU{hgpJq0IyxB($EOE8B4ugvaj@d`}rmc#wJPAF0W3^BF}<<9?>}?CC4N
+zOI=2vph!3VX%a=M;A#;iD(U(;4P{j1#@!!3I<BD#U1qQ`k*~jdhfezWY0N>FQwX2>
+zmGG@Yn1wE<5zbyCe4~sR)qwE8ZMw<V3g!`=q1rF1^9qPQCEtxjRG`ZO!rTqQH;X7k
+zmqmmxMil#@f+a+sk#+Mql%UHJ!s;!u{-9tP(VKMg8>-0_MBkC`9|cu!1>phJj}MY&
+zy`%CrkcTd-2(xtO=z9fc5S~zJU&ks!ntu9?&!03~7c9>mIO^$rR1ZiZyFDPuV+J7m
+XMeLYdSqHM;?&Pv-gjc5_;}8D<l<B;s
+
+diff --git a/images/r_dsremote_128x128.png b/images/r_dsremote_128x128.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..1b5d9b7c3aeaf634a879680667983e71d73da643
+GIT binary patch
+literal 2508
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/images/r_dsremote_256x256.png b/images/r_dsremote_256x256.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..0ae8e6dada66ac57c2578f4c45c06176e7c2305b
+GIT binary patch
+literal 3905
+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
+P1^~cW+FDebdENX!%{jWu
+
+literal 0
+HcmV?d00001
+
+diff --git a/images/r_dsremote_32x32.png b/images/r_dsremote_32x32.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f8d4341a1d240012f0da4f870ba9f6a4721d1f9
+GIT binary patch
+literal 1105
+zcmV-X1g`suP)<h;3K|Lk000e1NJLTq001BW001Be1^@s6b9#F80004mX+uL$Nkc;*
+zaB^>EX>4Tx04R}tkv&MmKpe$iQ>7wRhjvhL$WWauh>AE$6^me@v=v%)FuC*#nlvOS
+zE{=k0!NHHks)LKOt`4q(Aou~|>f)s6A|?JWDYS_3;J6>}?mh0_0Yam~RI_UWP&La)
+z#baVNw<-o+A;6D*3?U>jQ%|H9Gw>W=_we!cF3PjK&;2?2l)T9RpGZ8%bi*RvAfDN@
+zbk6(4VOEk9;&bA0gDyz?$aUG}H_k<e1)do;GO2muFtJ$dV7Y@?$xw->i6e@tQNECM
+zS>e3JS*_Gq>z@3D!MwJT<~q$0#Ib|~k`N)IhB7L!5T#Wk#YBqsV;=rt$DbsZOs+B*
+zITlcb3d!+<|H1EW&BD~An-q)z-7mKNF$x5Bfo9#dzmILZc>?&Kfh(=;uQq_$Ptxmc
+zEph}5Yy%h9ZB5<-E_Z;zCtWfmNAlAY3I*W(jJ_!cgl>V}HMh6cK29Hi40W}90~{Oz
+zV@1kd_jq?tXK(+WY4!I5FBEc&Xo`}?00006VoOIv0RI600RN!9r;`8x010qNS#tmY
+z3ljhU3ljkVnw%H_000McNliru=K=!`G8Vkru|5C*02y>eSad^gZEa<4bO1wgWnpw>
+zWFU8GbZ8()Nlj2!fese{00JpVL_t(o!|j*7N-IGW$A2@cYl0XRL<A8c0ZAcP3E~Ub
+z*x866Rua^A@Bu8;MkL@XSO}tEr4kfDA~r(WfFI2k;zx{{Jr=_<mwQd_2G_N5;1oME
+z%>4Guoc}qaL=b+kX@0o<0<<(5tW;oQ1D>8fA9oz+?uK+4vRN1$1l{Z}i6HgN^N`+N
+z1paSYBcr3p(GlYN_1FB{ngUSDY!sMM|AM$KlFuWxTEqa!BvL3K4-eKn4>>(WaycZG
+zvJf2|$i>As02GV$=N=y;ot@TGOH1Lr5LpzAkHgFiC<P)=D8S20jA7_FFg9kR;Py6V
+z0D$&(;{ky8ckum~0d8*Wrl}OPwZ#Zfsld*T1sEBDL?Q+N5qNxr<z+ZLG<~iMb92zz
+z`b8=Jv%S4RJ`a6;wy#=+t1CD;0nalqjsx@aFgY2s6oZ+&wS`ox;ib5x*-#5^IhgYf
+z&Ri+TWME>#96{vCD3L(+_K<SfTB(F=ZX*5t)(hDza((>`$*7SO-`$x^7|8I{RQO|v
+zEEil}+Fane$o6(PfXH-Uco=dya~ED;VPyrLpJNmvtzmHydV0)vu?V}nF-!5lfDs_2
+zjBc#28-<JwKx<f7Fm)op`8n+G$6OVs(=a=0y|A{{*b9*Z1b3mU%Y2`m!NI{700O1+
+zeWUeZS|$V2(>8~!uGTM3RHL_Htp=r%DK4}&3n!D|Anxy>T(${nXz26osD2-(KMn8!
+XlZD|Ex`y7r00000NkvXXu0mjfgr4e}
+
+literal 0
+HcmV?d00001
+
+diff --git a/images/r_dsremote_512x512.png b/images/r_dsremote_512x512.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..1ad93f5c6f02f3964a3b2604fdec60b41d8b89c3
+GIT binary patch
+literal 5174
+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
+Db<%%+
+
+literal 0
+HcmV?d00001
+
+diff --git a/images/r_dsremote_64x64.png b/images/r_dsremote_64x64.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..2016725103fa277c07dd9444b9b8b0dd106cb942
+GIT binary patch
+literal 1605
+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
+D?b6+>
+
+literal 0
+HcmV?d00001
+
+diff --git a/install/net.teuniz.dsremote.appdata.xml b/install/net.teuniz.dsremote.appdata.xml
+new file mode 100644
+index 0000000..9dd57de
+--- /dev/null
++++ b/install/net.teuniz.dsremote.appdata.xml
+@@ -0,0 +1,77 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<component type="desktop-application">
++    <id>net.teuniz.dsremote</id>
++    <launchable type="desktop-id">DSRemote.desktop</launchable>
++    <name>DSRemote</name>
++    <metadata_license>FSFAP</metadata_license>
++    <project_license>GPL-3.0+</project_license>
++    <summary>DSRemote is a program to control and visualize your Rigol® oscillosopes</summary>
++    <description>
++
++     <p>DSRemote is a program to control and visualize your Rigol® DS6000 or DS1000Z series oscilloscope from
++your Linux desktop via USB or LAN. It will probably work as well with the other series like DS2000A and DS4000 series but
++I have no access to all those oscilloscopes so I can not test it</p>
++
++    <p>Features:</p>
++    <ul>
++		<li>LAN or USB connection</li>
++        <li>Saving screenshots</li>
++        <li>Saving data to file</li>
++    </ul>
++
++    </description>
++    <developer_name>Teunis van Beelen</developer_name>
++    
++    <screenshots>
++        <screenshot type="default">
++            <image>https://www.teuniz.net/DSRemote/oscilloscope_decode.png</image>
++        </screenshot>
++        <screenshot>
++            <image>https://www.teuniz.net/DSRemote/oscilloscope_with_fft.png</image>
++        </screenshot>
++  </screenshots>
++
++    <url type="homepage">https://www.teuniz.net/DSRemote</url>
++    <url type="bugtracker">https://gitlab.com/Teuniz/DSRemote/-/issues</url>
++    <url type="help">https://gitlab.com/Teuniz/DSRemote/-/issues</url>
++
++    <releases>
++	<release version='0.42_2408061715' date='2021-05-30'>
++	<description>
++        Release
++	</description>
++	</release>
++
++  </releases>
++
++  <content_rating type="oars-1.1">
++    <content_attribute id="violence-cartoon">none</content_attribute>
++    <content_attribute id="violence-fantasy">none</content_attribute>
++    <content_attribute id="violence-realistic">none</content_attribute>
++    <content_attribute id="violence-bloodshed">none</content_attribute>
++    <content_attribute id="violence-sexual">none</content_attribute>
++    <content_attribute id="violence-desecration">none</content_attribute>
++    <content_attribute id="violence-slavery">none</content_attribute>
++    <content_attribute id="violence-worship">none</content_attribute>
++    <content_attribute id="drugs-alcohol">none</content_attribute>
++    <content_attribute id="drugs-narcotics">none</content_attribute>
++    <content_attribute id="drugs-tobacco">none</content_attribute>
++    <content_attribute id="sex-nudity">none</content_attribute>
++    <content_attribute id="sex-themes">none</content_attribute>
++    <content_attribute id="sex-homosexuality">none</content_attribute>
++    <content_attribute id="sex-prostitution">none</content_attribute>
++    <content_attribute id="sex-adultery">none</content_attribute>
++    <content_attribute id="sex-appearance">none</content_attribute>
++    <content_attribute id="language-profanity">none</content_attribute>
++    <content_attribute id="language-humor">none</content_attribute>
++    <content_attribute id="language-discrimination">none</content_attribute>
++    <content_attribute id="social-chat">none</content_attribute>
++    <content_attribute id="social-info">none</content_attribute>
++    <content_attribute id="social-audio">none</content_attribute>
++    <content_attribute id="social-location">none</content_attribute>
++    <content_attribute id="social-contacts">none</content_attribute>
++    <content_attribute id="money-purchasing">none</content_attribute>
++    <content_attribute id="money-gambling">none</content_attribute>
++  </content_rating>
++    
++</component> 
+diff --git a/install/net.teuniz.dsremote.desktop b/install/net.teuniz.dsremote.desktop
+new file mode 100644
+index 0000000..42f62cf
+--- /dev/null
++++ b/install/net.teuniz.dsremote.desktop
+@@ -0,0 +1,11 @@
++[Desktop Entry]
++Encoding=UTF-8
++Name=DSRemote
++Comment=Operate your Rigol oscilloscope from your Linux desktop.
++Exec=DSRemote
++StartupWMClass=net.teuniz.dsremote
++Icon=net.teuniz.dsremote
++Terminal=false
++Type=Application
++Categories=Science;Application;Development;
++X-Desktop-File-Install-Version=0.1
+diff --git a/interface.cpp b/interface.cpp
+index 683e064..ac295cc 100644
+--- a/interface.cpp
++++ b/interface.cpp
+@@ -25,8 +25,7 @@
+ ***************************************************************************
+ */
+ 
+-
+-
++#include "mainwindow.h"
+ 
+ void UI_Mainwindow::navDialChanged(int npos)
+ {
+diff --git a/mainwindow.cpp b/mainwindow.cpp
+index 38d2b29..cf1adf4 100644
+--- a/mainwindow.cpp
++++ b/mainwindow.cpp
+@@ -27,13 +27,6 @@
+ 
+ 
+ #include "mainwindow.h"
+-#include "mainwindow_constr.cpp"
+-#include "timer_handlers.cpp"
+-#include "save_data.cpp"
+-#include "interface.cpp"
+-#include "serial_decoder.cpp"
+-
+-
+ 
+ void UI_Mainwindow::open_settings_dialog()
+ {
+@@ -91,7 +84,8 @@ void UI_Mainwindow::open_connection()
+     device = tmc_open_usb(dev_str);
+     if(device == NULL)
+     {
+-      snprintf(str, 4096, "Can not open device %s", dev_str);
++      char* msg = strerror(errno);
++      snprintf(str, 4096, "Can not open device %s: %s", dev_str, msg);
+       goto OC_OUT_ERROR;
+     }
+   }
+diff --git a/save_data.cpp b/save_data.cpp
+index 56e9238..b774123 100644
+--- a/save_data.cpp
++++ b/save_data.cpp
+@@ -25,6 +25,7 @@
+ ***************************************************************************
+ */
+ 
++#include "mainwindow.h"
+ 
+ #define SAV_MEM_BSZ    (250000)
+ 
+diff --git a/serial_decoder.cpp b/serial_decoder.cpp
+index db6c364..29a7de1 100644
+--- a/serial_decoder.cpp
++++ b/serial_decoder.cpp
+@@ -53,7 +53,7 @@
+ ***************************************************************************
+ */
+ 
+-
++#include "mainwindow.h"
+ 
+ 
+ void UI_Mainwindow::serial_decoder(struct device_settings *d_parms)
+diff --git a/third_party/CMakeLists.txt b/third_party/CMakeLists.txt
+new file mode 100644
+index 0000000..0f65dae
+--- /dev/null
++++ b/third_party/CMakeLists.txt
+@@ -0,0 +1 @@
++add_subdirectory(kiss_fft) 
+diff --git a/third_party/kiss_fft/CMakeLists.txt b/third_party/kiss_fft/CMakeLists.txt
+new file mode 100644
+index 0000000..3fd825d
+--- /dev/null
++++ b/third_party/kiss_fft/CMakeLists.txt
+@@ -0,0 +1,5 @@
++add_library(kiss_fft kiss_fft.c kiss_fftr.c)
++target_sources(kiss_fft INTERFACE
++	FILE_SET HEADERS TYPE HEADERS BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES kiss_fft.h kiss_fftr.h)
++target_sources(kiss_fft PRIVATE
++	FILE_SET private_headers TYPE HEADERS BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES _kiss_fft_guts.h)
+diff --git a/timer_handlers.cpp b/timer_handlers.cpp
+index fd64a28..6f8955b 100644
+--- a/timer_handlers.cpp
++++ b/timer_handlers.cpp
+@@ -25,7 +25,7 @@
+ ***************************************************************************
+ */
+ 
+-
++#include "mainwindow.h"
+ 
+ 
+ void UI_Mainwindow::test_timer_handler()
+diff --git a/tmc_lan.c b/tmc_lan.c
+index e7b96d8..8243903 100644
+--- a/tmc_lan.c
++++ b/tmc_lan.c
+@@ -203,6 +203,8 @@ struct tmcdev * tmclan_open(const char *host_or_ip)
+ 
+   if(connect(sockfd, (struct sockaddr *) &inet_address, sizeof(struct sockaddr)) < 0)
+   {
++    char* err = strerror(errno);
++    printf("Unable to connect to device %s: %s", ip_address, err);
+     return NULL;
+   }
+ 
+-- 
+2.48.1
+
+
+From ae96a813ca1b16d54358686d012433a5c44ace08 Mon Sep 17 00:00:00 2001
+From: Martin Marmsoler <martin.marmsoler@gmail.com>
+Date: Sun, 23 Mar 2025 15:39:15 +0100
+Subject: [PATCH 2/4] keep program version in global.h
+
+Reason/Description: Otherwise it must be changed twice
+Files: CMakeLists.txt and global.h
+---
+ CMakeLists.txt | 2 --
+ global.h       | 2 --
+ 2 files changed, 4 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 992ebfa..a4849d5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.23)
+ 
+ project(DSRemote)
+ set(ID "net.teuniz.dsremote")
+-set(VERSION "0.42_2408061715")
+ 
+ find_package(QT NAMES Qt4 Qt5 Qt6 REQUIRED)
+ set(QT Qt${QT_VERSION_MAJOR})
+@@ -82,7 +81,6 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY AUTOMOC ON)
+ set_property(TARGET ${PROJECT_NAME} PROPERTY AUTORCC ON)
+ target_sources(${PROJECT_NAME} PRIVATE
+ 	FILE_SET HEADERS TYPE HEADERS BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HEADERS})
+-target_compile_definitions(${PROJECT_NAME} PRIVATE PROGRAM_VERSION="${VERSION}")
+ 
+ install(TARGETS ${PROJECT_NAME})
+ 
+diff --git a/global.h b/global.h
+index 05e028c..22346f3 100644
+--- a/global.h
++++ b/global.h
+@@ -59,9 +59,7 @@
+ 
+ 
+ #define PROGRAM_NAME          "DSRemote"
+-#ifndef PROGRAM_VERSION
+ #define PROGRAM_VERSION       "0.42_2408061715"
+-#endif
+ 
+ #define MAX_PATHLEN            (1024)
+ 
+-- 
+2.48.1
+
+
+From 4449e35981f81eeab3ccaba0ce4068c9b0e218d5 Mon Sep 17 00:00:00 2001
+From: Martin Marmsoler <martin.marmsoler@gmail.com>
+Date: Thu, 27 Mar 2025 17:34:30 +0100
+Subject: [PATCH 3/4] add initial flatpak manifest
+
+---
+ .gitignore                              |  2 ++
+ install/flatpak/build.sh                |  1 +
+ install/flatpak/install.sh              |  3 +++
+ install/flatpak/net.teuniz.dsremote.yml | 25 +++++++++++++++++++++++++
+ install/net.teuniz.dsremote.appdata.xml |  2 +-
+ 5 files changed, 32 insertions(+), 1 deletion(-)
+ create mode 100755 install/flatpak/build.sh
+ create mode 100755 install/flatpak/install.sh
+ create mode 100644 install/flatpak/net.teuniz.dsremote.yml
+
+diff --git a/.gitignore b/.gitignore
+index 9be39f9..94303b2 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,4 @@
+ CMakeLists.txt.user
+ build
++.flatpak-builder
++dsremoteRepo
+diff --git a/install/flatpak/build.sh b/install/flatpak/build.sh
+new file mode 100755
+index 0000000..75b7fec
+--- /dev/null
++++ b/install/flatpak/build.sh
+@@ -0,0 +1 @@
++ flatpak-builder --force-clean --repo=dsremoteRepo build net.teuniz.dsremote.yml
+diff --git a/install/flatpak/install.sh b/install/flatpak/install.sh
+new file mode 100755
+index 0000000..51c3a70
+--- /dev/null
++++ b/install/flatpak/install.sh
+@@ -0,0 +1,3 @@
++flatpak remove net.teuniz.dsremote
++flatpak remote-add dsremoteRepo dsremoteRepo --no-gpg-verify
++flatpak install dsremoteRepo net.teuniz.dsremote
+diff --git a/install/flatpak/net.teuniz.dsremote.yml b/install/flatpak/net.teuniz.dsremote.yml
+new file mode 100644
+index 0000000..1e36f26
+--- /dev/null
++++ b/install/flatpak/net.teuniz.dsremote.yml
+@@ -0,0 +1,25 @@
++app-id: net.teuniz.dsremote
++runtime: org.kde.Platform
++runtime-version: 6.4
++sdk: org.kde.Sdk
++command: DSRemote
++desktop-file-name-suffix: '' # used to create development version
++finish-args:
++  - --socket=wayland
++  - --socket=fallback-x11
++  - --filesystem=home # to save images
++  - --share=network # for the LAN connection needed
++  - --device=all # to access usb devices
++
++modules:
++  - name: DSRemote
++    buildsystem: cmake
++    builddir: true
++    sources:
++      - type: dir
++        path: ../..
++    build-options:
++      cflags: -U_FORTIFY_SOURCE  # Remove _FORTIFY_SOURCE
++      cxxflags: -U_FORTIFY_SOURCE
++      env:
++        CPPFLAGS: -U_FORTIFY_SOURCE
+diff --git a/install/net.teuniz.dsremote.appdata.xml b/install/net.teuniz.dsremote.appdata.xml
+index 9dd57de..20123f7 100644
+--- a/install/net.teuniz.dsremote.appdata.xml
++++ b/install/net.teuniz.dsremote.appdata.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <component type="desktop-application">
+     <id>net.teuniz.dsremote</id>
+-    <launchable type="desktop-id">DSRemote.desktop</launchable>
++    <launchable type="desktop-id">net.teuniz.dsremote.desktop</launchable>
+     <name>DSRemote</name>
+     <metadata_license>FSFAP</metadata_license>
+     <project_license>GPL-3.0+</project_license>
+-- 
+2.48.1
+
+
+From 6fff47f35481b521075aaf285bb155b0ce6b81e5 Mon Sep 17 00:00:00 2001
+From: Martin Marmsoler <martin.marmsoler@gmail.com>
+Date: Thu, 27 Mar 2025 17:42:42 +0100
+Subject: [PATCH 4/4] -Wp must be specified to undefine _FORTIFY_SOURCE
+
+Files: net.teuniz.dsremote.yml
+---
+ install/flatpak/net.teuniz.dsremote.yml | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/install/flatpak/net.teuniz.dsremote.yml b/install/flatpak/net.teuniz.dsremote.yml
+index 1e36f26..92f6882 100644
+--- a/install/flatpak/net.teuniz.dsremote.yml
++++ b/install/flatpak/net.teuniz.dsremote.yml
+@@ -19,7 +19,7 @@ modules:
+       - type: dir
+         path: ../..
+     build-options:
+-      cflags: -U_FORTIFY_SOURCE  # Remove _FORTIFY_SOURCE
+-      cxxflags: -U_FORTIFY_SOURCE
++      cflags: -Wp,-U_FORTIFY_SOURCE  # Remove _FORTIFY_SOURCE
++      cxxflags: -Wp,-U_FORTIFY_SOURCE
+       env:
+-        CPPFLAGS: -U_FORTIFY_SOURCE
++        CPPFLAGS: -Wp,-U_FORTIFY_SOURCE
+-- 
+2.48.1
+

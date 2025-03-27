@@ -17,5 +17,12 @@ modules:
     builddir: true
     sources:
       - type: git
-        url: https://gitlab.com/Murmele/DSRemote.git
-        branch: master
+        url: https://gitlab.com/Teuniz/DSRemote.git
+        tag: d416e1b3fdfdd8702ca44693739492d897dbd599
+      - type: patch
+        path: cmake-buildsystem.patch
+    build-options:
+      cflags: -Wp,-U_FORTIFY_SOURCE  # Remove _FORTIFY_SOURCE
+      cxxflags: -Wp,-U_FORTIFY_SOURCE
+      env:
+        CPPFLAGS: -Wp,-U_FORTIFY_SOURCE
