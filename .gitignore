@@ -1,0 +1,8 @@
+# Proprietary HappyFoto files extracted from the user's own installer (never commit)
+/work/
+
+# Flatpak build output
+.flatpak-builder/
+/build-electron/
+/repo/
+*.flatpak
