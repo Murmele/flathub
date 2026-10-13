@@ -35,8 +35,8 @@ the script.
 | `build-flatpak.sh` | Runs all steps below, then builds/installs with flatpak-builder |
 | `check-deps.sh` | Checks the host tools |
 | `setup-flatpak.sh` | Adds Flathub (user) and installs SDK, runtimes and builder |
-| `prepare.sh` | Extracts `app.asar` and the unpacked native modules from the DMG into `work/`, disables the auto-updater, extracts the icon |
-| `asar_extract.py`, `icns_to_png.py` | Helpers for `prepare.sh` |
+| `prepare.sh` | Stages `app.asar` and its external native modules from the DMG into `work/`, disables the auto-updater, extracts the icon |
+| `icns_to_png.py` | Icon extraction helper for `prepare.sh` |
 | `at.happyfoto.SmartMomentsLinux.yml` | Flatpak manifest |
 | `API.md` | Notes on the HappyFoto backend API |
 
@@ -44,6 +44,9 @@ Inside the Flatpak build:
 
 * Electron 36.1.0 (the version the official app uses) is downloaded; the binary is renamed
   so the app behaves like an installed (packaged) app.
+* The official [`@electron/asar`](https://github.com/electron/asar) CLI (pinned to 4.3.1)
+  extracts `app.asar` using the SDK's Node.js. The external files in `app.asar.unpacked`
+  are included, and macOS-only native payloads are removed before Linux replacements are added.
 * `sharp` uses its Linux prebuilt binaries; `better-sqlite3` is compiled for the Electron ABI.
 * `@hf-designer/ai-desktop` (proprietary, macOS/Windows only) is replaced by a stub. It is
   only used for a macOS-specific JPEG loader; the AI image analysis runs in the web part

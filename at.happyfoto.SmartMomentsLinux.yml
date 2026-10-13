@@ -27,7 +27,7 @@ modules:
   - name: happyfoto-smart-moments
     buildsystem: simple
     build-options:
-      # npm / node-gyp download the Linux native modules and the Electron headers.
+      # npm / node-gyp download the ASAR tool, Linux native modules and Electron headers.
       build-args:
         - --share=network
       env:
@@ -58,6 +58,16 @@ modules:
       - mv /app/main/electron /app/main/happyfoto-smart-moments
       - rm -f /app/main/resources/default_app.asar
       - cp -a app/resources/. /app/main/resources/
+      # Use the SDK's Node.js to unpack with Electron's official ASAR tool.
+      - npx --yes @electron/asar@4.3.1 extract /app/main/resources/app.asar /app/main/resources/app
+      # Preserve permissions and any extra files from the external native payloads.
+      - cp -a /app/main/resources/app.asar.unpacked/. /app/main/resources/app/
+      # Electron must load the extracted, patched app directory.
+      - rm -rf /app/main/resources/app.asar /app/main/resources/app.asar.unpacked
+      # Drop macOS-only payloads before adding Linux builds or stubs.
+      - rm -rf /app/main/resources/app/node_modules/@img/*darwin*
+        /app/main/resources/app/node_modules/@hf-designer/ai-desktop/bin
+        /app/main/resources/app/node_modules/@myunisoft/heif-converter/node_modules
       # Replace the proprietary AI module that only exists for macOS/Windows.
       - cp stubs/ai-desktop/index.js /app/main/resources/app/node_modules/@hf-designer/ai-desktop/dist/index.js
       # Linux builds of sharp and heif-converter (prebuilt), plus better-sqlite3 (compiled for the Electron ABI).

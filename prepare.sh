@@ -14,7 +14,7 @@ res_in_dmg="HappyFoto smart moments.app/Contents/Resources"
 command -v 7z >/dev/null || { echo "7z (p7zip) is required" >&2; exit 1; }
 
 rm -rf "$work"
-mkdir -p "$work/raw" "$work/app/resources/app"
+mkdir -p "$work/raw" "$work/app/resources"
 
 echo "Extracting resources from DMG ..."
 (cd "$work/raw" && 7z x -y "$dmg" \
@@ -25,15 +25,8 @@ echo "Extracting resources from DMG ..."
     "$res_in_dmg/icon.icns" >/dev/null)
 raw="$work/raw/$res_in_dmg"
 
-echo "Unpacking app.asar ..."
-python3 -I "$here/asar_extract.py" "$raw/app.asar" "$work/app/resources/app"
-# Merge the files that were kept outside of the archive (native modules, exiftool, ...)
-cp -a "$raw/app.asar.unpacked/." "$work/app/resources/app/"
-
-# Drop macOS-only native payloads; the Flatpak build adds Linux builds or stubs instead.
-rm -rf "$work/app/resources/app/node_modules/@img/"*darwin* \
-       "$work/app/resources/app/node_modules/@hf-designer/ai-desktop/bin" \
-       "$work/app/resources/app/node_modules/@myunisoft/heif-converter/node_modules"
+# Keep the archive and its external files together for @electron/asar in the Flatpak build.
+mv "$raw/app.asar" "$raw/app.asar.unpacked" "$work/app/resources/"
 
 # Disable the built-in auto updater (it only knows the macOS/Windows packages).
 python3 -I - "$raw/config.json" "$work/app/resources/config.json" <<'PY'

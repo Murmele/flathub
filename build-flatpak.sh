@@ -8,7 +8,7 @@
 #   --bundle       additionally export a single-file bundle (HappyFoto-smart-moments.flatpak)
 #   --no-install   only build, do not install the app for the current user
 #   --skip-setup   do not install/update the Flatpak SDK and runtimes
-#   --skip-prepare reuse the previously extracted app in ./work
+#   --skip-prepare reuse the previously staged app archive in ./work
 #   --run          start the app after a successful installation
 #   -h, --help     show this help
 set -euo pipefail
@@ -59,8 +59,8 @@ fi
 if ((prepare)); then
     step "Extracting the app from $dmg"
     "$here/prepare.sh" "$dmg"
-elif [ ! -d "$here/work/app" ]; then
-    echo "No prepared app in $here/work - run without --skip-prepare" >&2
+elif [ ! -f "$here/work/app/resources/app.asar" ] || [ ! -d "$here/work/app/resources/app.asar.unpacked" ]; then
+    echo "No staged app archive in $here/work - run without --skip-prepare" >&2
     exit 1
 fi
 
