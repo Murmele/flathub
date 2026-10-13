@@ -1,5 +1,8 @@
-# Proprietary HappyFoto files extracted from the user's own installer (never commit)
+# Proprietary HappyFoto installer and preparation files (never commit)
 /work/
+
+# Local npm installs used when maintaining the build dependency lockfile
+/build-dependencies/node_modules/
 
 # Flatpak build output
 .flatpak-builder/
