@@ -93,7 +93,7 @@ replaces the lockfile and source list only after both commands succeed. Review a
 This maintenance command needs network access; normal builds use the committed lockfile
 and source list. When changing the Node.js SDK or runtime branch, also update
 `--node-sdk-extension` in the script. When upgrading Electron, update its pin in
-`build-dependencies/package.json`, its version and checksum in `electron-builder.config.json`,
+`build-dependencies/package.json`, its version and checksum in the `build` section of that file,
 and the header archive and native rebuild target in the manifest; then regenerate the lockfile
 and sources.
 
