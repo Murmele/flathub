@@ -14,7 +14,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$here"
-app_id=at.happyfoto.SmartMomentsLinux
+app_id=at.happyfoto.SmartMoments
 manifest="$here/$app_id.yml"
 build_dir="$root/build-electron"
 state_dir="$root/.flatpak-builder"

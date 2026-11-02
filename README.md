@@ -13,11 +13,11 @@ macOS build into a Flatpak.
    ```
 
 2. Start "HappyFoto smart moments (Linux repack)" from the application menu, or run
-   `flatpak run at.happyfoto.SmartMomentsLinux`.
+   `flatpak run at.happyfoto.SmartMoments`.
 
 The manifest downloads the official DMG and verifies its SHA-256 before extracting it.
 Matching downloads are reused from Flatpak Builder's cache. To build a new upstream
-release, update the DMG's `sha256` in `at.happyfoto.SmartMomentsLinux.yml`; the changed
+release, update the DMG's `sha256` in `at.happyfoto.SmartMoments.yml`; the changed
 checksum makes Flatpak Builder download a fresh copy from the same URL. Cached builds
 do not automatically check the server for newer releases.
 
@@ -41,7 +41,7 @@ sources and fetched before the build. The build itself runs without network acce
 | `setup-flatpak.sh` | Adds Flathub (user) and installs SDK, runtimes and builder |
 | `update-generated-sources.sh` | Refreshes the npm lockfile and generates the source list for offline builds |
 | `icns_to_png.py` | Icon extraction helper run inside the Flatpak build |
-| `at.happyfoto.SmartMomentsLinux.yml` | Downloads and verifies the DMG, extracts and prepares the app, then builds the Flatpak |
+| `at.happyfoto.SmartMoments.yml` | Downloads and verifies the DMG, extracts and prepares the app, then builds the Flatpak |
 | `build-dependencies/package.json`, `build-dependencies/package-lock.json` | Pin the ASAR tool, node-gyp and Linux native-module dependencies |
 | `generated-sources.json` | Generated source list that supplies the npm cache for offline installation |
 | `API.md` | Notes on the HappyFoto backend API |

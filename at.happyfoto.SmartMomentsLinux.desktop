@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=HappyFoto smart moments (Linux repack)
-Comment=Design HappyFoto photo books (official app, repacked for personal use)
-Exec=happyfoto-smart-moments %U
-Icon=at.happyfoto.SmartMomentsLinux
-Terminal=false
-Categories=Graphics;Photography;
-StartupWMClass=happyfoto-smart-moments

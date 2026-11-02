@@ -1,7 +1,4 @@
-# Personal-use Flatpak of the official HappyFoto "smart moments" Electron app.
-# Use ./build-flatpak.sh to download the installer and run flatpak-builder.
-# The proprietary downloads and build output are never committed.
-app-id: at.happyfoto.SmartMomentsLinux
+app-id: at.happyfoto.SmartMoments
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
@@ -32,7 +29,7 @@ modules:
         npm_config_offline: 'true'
         npm_config_update_notifier: 'false'
     sources:
-      # Build tool only; it is never installed into /app.
+      # Build tool only; it is never installed into /app. Used to extract the macOs dmg
       - type: archive
         url: https://github.com/ip7z/7zip/releases/download/26.04/7z2604-linux-x64.tar.xz
         sha256: fc0327ba27e89bd086cf426dff17d77de582953cdbbc10a6576540a06853ffcd
@@ -64,10 +61,13 @@ modules:
         dest: stubs
       - type: file
         path: icns_to_png.py
+      - type: script
+        dest-filename: happyfoto-smart-moments
+        commands:
+          - export TMPDIR="${XDG_RUNTIME_DIR}/app/${FLATPAK_ID}"
+          - exec zypak-wrapper /app/main/happyfoto-smart-moments --ozone-platform-hint=auto "$@"
       - type: file
-        path: happyfoto-smart-moments.sh
-      - type: file
-        path: at.happyfoto.SmartMomentsLinux.desktop
+        path: at.happyfoto.SmartMoments.desktop
     build-commands:
       # All npm tarballs are supplied by generated-sources.json before the build starts.
       - cd build-dependencies && npm ci --offline --ignore-scripts --no-audit --no-fund
@@ -121,6 +121,6 @@ modules:
         --nodedir=/run/build/happyfoto-smart-moments/electron-headers
       - install -Dm755 build-dependencies/node_modules/better-sqlite3/build/Release/better_sqlite3.node /app/main/resources/binaries/better_sqlite3_linux_x64.node
       # Launcher, desktop integration
-      - install -Dm755 happyfoto-smart-moments.sh /app/bin/happyfoto-smart-moments
-      - install -Dm644 at.happyfoto.SmartMomentsLinux.desktop /app/share/applications/at.happyfoto.SmartMomentsLinux.desktop
-      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/at.happyfoto.SmartMomentsLinux.png
+      - install -Dm755 happyfoto-smart-moments /app/bin/happyfoto-smart-moments
+      - install -Dm644 at.happyfoto.SmartMoments.desktop /app/share/applications/at.happyfoto.SmartMoments.desktop
+      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/at.happyfoto.SmartMoments.png
