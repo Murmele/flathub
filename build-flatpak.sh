@@ -57,18 +57,6 @@ args=(--user --force-clean --disable-rofiles-fuse --sandbox --state-dir="$state_
 if ((install)); then args+=(--install); fi
 if ((bundle)); then args+=(--repo="$repo_dir"); fi
 
-# OSTree refuses to write when less than 3 % of the disk is free, which is easily the case on
-# large, well-filled disks. Use an absolute limit for the local bundle repository instead.
-prepare_repo() {
-    if [ ! -f "$repo_dir/config" ]; then
-        mkdir -p "$repo_dir"/{objects,tmp,state,extensions,refs/heads,refs/mirrors,refs/remotes}
-        printf '[core]\nrepo_version=1\nmode=archive-z2\n' > "$repo_dir/config"
-    fi
-    grep -q '^min-free-space-size=' "$repo_dir/config" ||
-        sed -i 's/^\[core\]$/[core]\nmin-free-space-size=1GB/' "$repo_dir/config"
-}
-if ((bundle)); then prepare_repo; fi
-
 step "Building the Flatpak (this downloads and extracts the app, then compiles native modules)"
 (cd "$here" && "${builder[@]}" "${args[@]}" "$build_dir" "$manifest")
 

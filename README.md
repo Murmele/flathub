@@ -28,8 +28,8 @@ build, and `--skip-setup` skips tooling installation. See `--help`.
 Host requirement: `flatpak`. Everything else (Freedesktop SDK
 25.08, Node.js SDK extension, Electron base app, flatpak-builder) is installed per user by
 the script. The manifest downloads 7-Zip for extraction and uses Python from the SDK.
-All downloads, including npm packages and Electron headers, are declared as manifest
-sources and fetched before the build. The build itself runs without network access;
+All downloads, including npm packages, the Electron runtime and Electron headers, are
+declared as manifest sources and fetched before the build. The build itself runs without network access;
 `build-flatpak.sh` passes `--sandbox` to enforce this locally.
 
 ## What the scripts do
@@ -42,16 +42,18 @@ sources and fetched before the build. The build itself runs without network acce
 | `update-generated-sources.sh` | Refreshes the npm lockfile and generates the source list for offline builds |
 | `icns_to_png.py` | Icon extraction helper run inside the Flatpak build |
 | `at.happyfoto.SmartMoments.yml` | Downloads and verifies the DMG, extracts and prepares the app, then builds the Flatpak |
-| `build-dependencies/package.json`, `build-dependencies/package-lock.json` | Pin the ASAR tool, node-gyp and Linux native-module dependencies |
-| `generated-sources.json` | Generated source list that supplies the npm cache for offline installation |
+| `build-dependencies/package.json`, `build-dependencies/package-lock.json` | Pin the ASAR tool, electron-builder, Electron and Linux native-module dependencies |
+| `generated-sources.json` | Generated source list that supplies npm packages and Electron's offline download cache |
 | `API.md` | Notes on the HappyFoto backend API |
 
 Inside the Flatpak build:
 
 * 7-Zip extracts the app resources from the downloaded DMG. The built-in auto-updater is
   disabled and the application icon is extracted inside the sandbox.
-* Electron 36.1.0 (the version the official app uses) is downloaded; the binary is renamed
-  so the app behaves like an installed (packaged) app.
+* `electron-builder` (pinned to 26.18.1) packages the extracted app with Electron 36.1.0.
+  `generated-sources.json` supplies the Electron download cache, and the builder config
+  verifies the archive checksum. The Linux executable is named so the app behaves like an
+  installed (packaged) app.
 * The official [`@electron/asar`](https://github.com/electron/asar) CLI (pinned to 4.3.1)
   extracts `app.asar` using the SDK's Node.js. The external files in `app.asar.unpacked`
   are included, and macOS-only native payloads are removed before Linux replacements are added.
@@ -90,8 +92,10 @@ replaces the lockfile and source list only after both commands succeed. Review a
 
 This maintenance command needs network access; normal builds use the committed lockfile
 and source list. When changing the Node.js SDK or runtime branch, also update
-`--node-sdk-extension` in the script. When upgrading Electron, update its runtime archive,
-header archive and native rebuild target together in the manifest.
+`--node-sdk-extension` in the script. When upgrading Electron, update its pin in
+`build-dependencies/package.json`, its version and checksum in `electron-builder.config.json`,
+and the header archive and native rebuild target in the manifest; then regenerate the lockfile
+and sources.
 
 ## Known limitations
 

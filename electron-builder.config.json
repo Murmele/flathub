@@ -1,0 +1,22 @@
+{
+  "appId": "at.happyfoto.SmartMoments",
+  "productName": "HappyFoto smart moments",
+  "directories": {
+    "app": "linux-app",
+    "output": "electron-builder-output"
+  },
+  "electronVersion": "36.1.0",
+  "electronDownload": {
+    "checksums": {
+      "electron-v36.1.0-linux-x64.zip": "088b95582140e2c9175f01df5c82a80048085acfb416bb27783bf4d0babc7eb4"
+    },
+    "unsafelyDisableChecksums": false
+  },
+  "asar": false,
+  "npmRebuild": false,
+  "nodeGypRebuild": false,
+  "linux": {
+    "executableName": "happyfoto-smart-moments",
+    "target": "dir"
+  }
+}

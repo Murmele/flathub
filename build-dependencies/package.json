@@ -5,6 +5,8 @@
   "description": "Build tools and Linux native modules for the HappyFoto Flatpak",
   "dependencies": {
     "@electron/asar": "4.3.1",
+    "electron": "36.1.0",
+    "electron-builder": "26.18.1",
     "@img/sharp-libvips-linux-x64": "1.1.0",
     "@img/sharp-linux-x64": "0.34.1",
     "@myunisoft/heif-converter.linux-x64": "0.1.6",

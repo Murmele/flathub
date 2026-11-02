@@ -28,17 +28,13 @@ modules:
         npm_config_cache: /run/build/happyfoto-smart-moments/flatpak-node/npm-cache
         npm_config_offline: 'true'
         npm_config_update_notifier: 'false'
+        XDG_CACHE_HOME: /run/build/happyfoto-smart-moments/flatpak-node/cache
     sources:
       # Build tool only; it is never installed into /app. Used to extract the macOs dmg
       - type: archive
         url: https://github.com/ip7z/7zip/releases/download/26.04/7z2604-linux-x64.tar.xz
         sha256: fc0327ba27e89bd086cf426dff17d77de582953cdbbc10a6576540a06853ffcd
         dest: 7zip
-        strip-components: 0
-      - type: archive
-        url: https://github.com/electron/electron/releases/download/v36.1.0/electron-v36.1.0-linux-x64.zip
-        sha256: 088b95582140e2c9175f01df5c82a80048085acfb416bb27783bf4d0babc7eb4
-        dest: electron
         strip-components: 0
       - type: archive
         url: https://artifacts.electronjs.org/headers/dist/v36.1.0/node-v36.1.0-headers.tar.gz
@@ -50,6 +46,8 @@ modules:
       - type: file
         path: build-dependencies/package-lock.json
         dest: build-dependencies
+      - type: file
+        path: electron-builder.config.json
       - generated-sources.json
       - type: file
         url: https://smartmoments.happyfoto.at/download/HappyFoto%20smart%20moments.dmg
@@ -69,16 +67,11 @@ modules:
       - type: file
         path: at.happyfoto.SmartMoments.desktop
     build-commands:
-      # All npm tarballs are supplied by generated-sources.json before the build starts.
       - cd build-dependencies && npm ci --offline --ignore-scripts --no-audit --no-fund
-      # Electron runtime; the renamed binary makes app.isPackaged true, so the app reads
-      # config.json/tenants.json from process.resourcesPath like the official builds.
-      - cp -a electron /app/main
-      - mv /app/main/electron /app/main/happyfoto-smart-moments
-      - rm -f /app/main/resources/default_app.asar
-      # Extract and prepare the official app entirely inside the build sandbox.
+      # Extract and prepare the official app for electron-builder inside the build sandbox.
       - |
         set -eu
+        mkdir -p linux-app
         resources="HappyFoto smart moments.app/Contents/Resources"
         ./7zip/7zz x -y -oraw installer.dmg \
           "$resources/app.asar" \
@@ -88,37 +81,41 @@ modules:
           "$resources/icon.icns" >/dev/null
         resources="raw/$resources"
 
-        # Use the SDK's Node.js with Electron's official ASAR tool.
-        build-dependencies/node_modules/.bin/asar extract "$resources/app.asar" /app/main/resources/app
+        # Extract the asar file from the macos dmg file
+        build-dependencies/node_modules/.bin/asar extract "$resources/app.asar" linux-app
         # Preserve permissions and any extra files from the external native payloads.
-        cp -a "$resources/app.asar.unpacked/." /app/main/resources/app/
+        cp -a "$resources/app.asar.unpacked/." linux-app/
 
         # The built-in updater cannot install updates to this Linux Flatpak.
-        python3 -I - "$resources/config.json" /app/main/resources/config.json <<'PY'
+        python3 -I - "$resources/config.json" config.json <<'PY'
         import json, sys
         cfg = json.load(open(sys.argv[1]))
         cfg.pop("appUpdateUrl", None)
         json.dump(cfg, open(sys.argv[2], "w"), indent=4)
         PY
-        cp "$resources/tenants.json" /app/main/resources/tenants.json
+        cp "$resources/tenants.json" tenants.json
 
         icon_size="$(python3 -I icns_to_png.py "$resources/icon.icns" icon.png)"
         if [ "$icon_size" != 512 ]; then
           echo "Warning: app icon is ${icon_size}px instead of 512px" >&2
         fi
       # Drop macOS-only payloads before adding Linux builds or stubs.
-      - rm -rf /app/main/resources/app/node_modules/@img/*darwin*
-        /app/main/resources/app/node_modules/@hf-designer/ai-desktop/bin
-        /app/main/resources/app/node_modules/@myunisoft/heif-converter/node_modules
+      - rm -rf linux-app/node_modules/@img/*darwin*
+        linux-app/node_modules/@hf-designer/ai-desktop/bin
+        linux-app/node_modules/@myunisoft/heif-converter/node_modules
       # Replace the proprietary AI module that only exists for macOS/Windows.
-      - cp stubs/ai-desktop/index.js /app/main/resources/app/node_modules/@hf-designer/ai-desktop/dist/index.js
+      - cp stubs/ai-desktop/index.js linux-app/node_modules/@hf-designer/ai-desktop/dist/index.js
       # Linux builds of sharp and heif-converter (prebuilt), plus better-sqlite3 (compiled for the Electron ABI).
-      - cp -a build-dependencies/node_modules/@img/sharp-linux-x64 build-dependencies/node_modules/@img/sharp-libvips-linux-x64 /app/main/resources/app/node_modules/@img/
-      - cp -a build-dependencies/node_modules/@myunisoft/heif-converter.linux-x64 /app/main/resources/app/node_modules/@myunisoft/
+      - cp -a build-dependencies/node_modules/@img/sharp-linux-x64 build-dependencies/node_modules/@img/sharp-libvips-linux-x64 linux-app/node_modules/@img/
+      - cp -a build-dependencies/node_modules/@myunisoft/heif-converter.linux-x64 linux-app/node_modules/@myunisoft/
       # The app's existing HEIF wrapper expects converter.node at the package root.
-      - ln -s lib/converter.linux-x64.node /app/main/resources/app/node_modules/@myunisoft/heif-converter.linux-x64/converter.node
+      - ln -s lib/converter.linux-x64.node linux-app/node_modules/@myunisoft/heif-converter.linux-x64/converter.node
       - cd build-dependencies/node_modules/better-sqlite3 && ../.bin/node-gyp rebuild --release --target=36.1.0 --arch=x64
         --nodedir=/run/build/happyfoto-smart-moments/electron-headers
+      - build-dependencies/node_modules/.bin/electron-builder --config electron-builder.config.json --linux --dir --x64
+      - cp -a electron-builder-output/linux-unpacked /app/main
+      - install -Dm644 config.json /app/main/resources/config.json
+      - install -Dm644 tenants.json /app/main/resources/tenants.json
       - install -Dm755 build-dependencies/node_modules/better-sqlite3/build/Release/better_sqlite3.node /app/main/resources/binaries/better_sqlite3_linux_x64.node
       # Launcher, desktop integration
       - install -Dm755 happyfoto-smart-moments /app/bin/happyfoto-smart-moments
